@@ -1,5 +1,10 @@
 # fddp.io-calc
 
 DEMO
-http://app.fddp.io/fddp-io-calc/
+====
+English version
+http://app.fddp.io/fddp-io-calc/#en
+
+Russion version
+http://app.fddp.io/fddp-io-calc/#ru
 
