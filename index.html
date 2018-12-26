@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>fddp.io - calc</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no">
+	<link href="https://fonts.googleapis.com/css?family=Exo+2" rel="stylesheet">
+
+	<link href="./css/tables.css" rel="stylesheet">
+	<link href="./css/range.css" rel="stylesheet">
+	<link href="./css/style-template.css" rel="stylesheet">
+	<link href="./css/mobile.css" rel="stylesheet">
+</head>
+<body>
+<page id="CALC" class="active">
+	<div>
+		<table><tr style="cursor: pointer; background-color: #fff">
+			<td style="display: none" id="plan1" class="plan-calc"> <strong>DT 5%</strong></td>
+			<td id="plan2" class="plan-calc"> <strong>Deposit Token (DT 10%)</strong></td>
+			<td style="display: none" id="plan3" class="plan-calc"> <strong>DT 15%</strong></td>
+		</tr></table>
+		<label><span id="text1">Какую сумму вы вкладываете</span> (<span class="curText"></span>)?</label>
+		<input id="__startDeposit" type="text" name="deposit" placeholder="0.0000" value="10">
+		<!-- span><big><strong> <span class="curText"></span></strong></big></span -->
+		<select id="SelectorCurrency">
+			<option selected>USD</option>
+			<option>ETH</option>
+		</select>
+		<label><span id="text2">Количество транзакций в месяц: </span><span id="__txToMonth">1000</span><span>
+		<span id="text3"> транзакций / мес</span></span></label>
+		<input id="rangeTXtoMonth" type="range" min="1000" max="40000" step="1000" value="1000">
+		<label><span id="text4">Срок депозита в месяцах: </span><span id="__tx">2</span><span id="text5"> мес</span></label>
+		<input id="rangeTX" type="range" min="1" max="24" step="1" value="2">
+		<div>
+			<big id="text6">ИТОГО:</big>
+			<h1 id="__result">...</h1>
+		</div>
+		<script type="text/javascript">
+			(_ =>{
+				if(_.location.hash == '#en'){
+					_.text1.innerText = "How much do you invest";
+					_.text2.innerText = "Number of transactions per month: ";
+					_.text3.innerText = " transaction / month";
+					_.text4.innerText = "Deposit term in months: ";
+					_.text5.innerText = " month";
+					_.text6.innerText = "TOTAL:";
+
+				}
+			})(window)
+		</script>
+	</div>
+
+</page>
+
+
+<script type="text/javascript" src="./js/lib.js"></script>
+<script type="text/javascript">
+
+page = {
+	rangeTX: 		$("#CALC #rangeTX"),
+	labelTX: 		$("#CALC #__tx"),
+	rangeTXtoMonth: $("#CALC #rangeTXtoMonth"),
+	labelTxInMonth: $("#CALC #__txToMonth"),
+	inputDeposit: 	$("#CALC #__startDeposit"),
+	plan1:			$('#CALC #plan1'),
+	plan2:			$('#CALC #plan2'),
+	plan3:			$('#CALC #plan3'),
+	cur: 			$("#CALC #SelectorCurrency"),
+	result:			$("#CALC #__result")
+};
+
+var calcConfig = {
+	activePlan: 0.10
+};
+
+page.rangeTX.oninput = 
+page.rangeTX.onchange = 
+function(e) {
+	page.labelTX.innerText = e.target.value;
+	updateCalcRender();
+};
+page.rangeTXtoMonth.oninput = 
+page.rangeTXtoMonth.onchange = function(e) {
+	page.labelTxInMonth.innerText = e.target.value;
+	updateCalcRender()
+};
+page.inputDeposit.onchange = updateCalcRender;
+page.inputDeposit.onkeyup = updateCalcRender;
+
+page.cur.onchange = function(e) {
+	console.log(e.target.value);
+	switchCurrencyEthUsd(e.target.value === "ETH");
+	updateCalcRender();
+};
+
+updateCalcRender();
+
+page.plan2.classList.add('active');
+
+function updateCalcRender(e) {
+	var obj = {
+		startDeposit: page.inputDeposit.value * 1,
+		txCount: page.rangeTX.value * page.rangeTXtoMonth.value,
+		txValue: 1000,
+		plan: calcConfig.activePlan
+	};
+	obj.result = pageCalc(obj.startDeposit, obj.txCount, obj.startDeposit, obj.plan);
+
+	var _ethOrUsd = page.cur.value === "ETH";
+	page.result.innerHTML = (_ethOrUsd? obj.result.profit.toFixed(18): obj.result.profit.toLocaleString()) +
+	" <span class=\"curText\"></span><br>" + '<span style="color: green;"> ▲ +' +
+	(obj.result.profitProcent).toFixed(2) + '% total profit </span>';
+
+	switchCurrencyEthUsd(page.cur.value === "ETH");
+}
+function switchCurrencyEthUsd(bool) {
+	var el = document.querySelectorAll(".curText");
+	for(var i = 0; i< el.length;i++){
+		if (bool === true){
+			el[i].classList.add("eth");
+		} else {
+			el[i].classList.remove("eth");
+		}
+	}
+}
+function ProfitCalc(_spredProcent){
+	var spredProcent = _spredProcent || 0.05;
+
+	var _money = 0, 
+		_moneySystem = 0,
+		_tokens = 0, 
+		_sellprice = 1 - spredProcent;
+
+	this.sellprice = _sellprice;
+
+	var arrHistory = [];
+
+	function getBuyPrice() {
+		return _sellprice / (1 - spredProcent)
+	}
+	function calcNewPrice() {
+		if(_tokens === 0) return;
+		var oldSellPrice = _sellprice;
+		_sellprice = _money * 99 / _tokens / 100;
+	}
+	function log() {
+		return {
+			ask: _sellprice,
+			bid: getBuyPrice(),
+			money: _money,
+			moneySystem: _moneySystem,
+			tokens: _tokens,
+			arrHistory: arrHistory
+		};
+	}
+	function buy(countTokens) {
+		var total = countTokens * getBuyPrice();
+		_money += total * (1 - (spredProcent / 2));
+		_moneySystem += total * (spredProcent / 2);
+		_tokens += countTokens;
+
+		arrHistory.push({
+			//index: +arrHistory.length,
+			tokens: +countTokens,
+			buy_price: +getBuyPrice(),
+			sell_price: +_sellprice,
+			todo: "buy"
+		});
+		
+		calcNewPrice();
+		log();
+		return total.toFixed(6) + " $";
+	}
+	function sell(countTokens) {
+		if (_tokens === 0 || _tokens - countTokens < 0) {
+			return;
+		}
+
+		var total = countTokens * _sellprice;
+		_money -= total;
+		_tokens -= countTokens;
+		
+		arrHistory.push({
+			tokens: +countTokens,
+			buy_price: +getBuyPrice(),
+			sell_price: +_sellprice,
+			todo: "sell"
+		});
+		calcNewPrice();
+		log();
+		return total.toFixed(6) + " $";
+	}
+	this.sell = sell;
+	this.buy = buy;
+	this.log = log;
+}
+function pageCalc(startDeposit, countTransaction, maxVal, planProcent) {
+	var _calc = new ProfitCalc(planProcent || 0.05);
+
+	countTransaction = countTransaction || 20000;
+	maxVal = maxVal || 100;
+
+	// генератор истории транзакций
+	_calc.buy(2);
+	for (var i = 0; i < countTransaction; i++) {
+		if (i < 1000) {
+			_calc.buy(Math.floor( maxVal + 5));
+		} else if (i === 1000) {
+			startDeposit = startDeposit * _calc.log().ask;
+		} else {
+			i % 2 === 0?
+				_calc.sell(Math.floor(maxVal + 5)): 
+				_calc.buy(Math.floor(maxVal + 5));
+		}
+	}
+	var arr = _calc.log();
+	return {
+		profit: arr.ask * startDeposit,
+		profitProcent: (arr.ask - 1) * 100
+	}
+}
+
+</script>
+</body></html>
